@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>qwendesk — Qwen support triage</title>
+  <style>
+    :root { --bg:#0f1117; --panel:#171a22; --line:#2a2f3a; --text:#e7ecf3; --muted:#93a0b4; --accent:#7c5cff; --ok:#2ec26a; --warn:#e3a008; --err:#f0506e; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+    header { display:flex; align-items:baseline; gap:14px; padding:16px 24px; border-bottom:1px solid var(--line); }
+    .brand { font-weight:700; font-size:18px; } .brand span { color:var(--accent); }
+    .muted { color:var(--muted); font-size:13px; }
+    main { max-width:960px; margin:0 auto; padding:24px; }
+    form { display:flex; gap:10px; margin-bottom:8px; }
+    textarea { flex:1; min-height:64px; resize:vertical; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:0 18px; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:default; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; background:#222836; }
+    .p-urgent,.p-high { color:var(--err); } .p-medium { color:var(--warn); } .p-low { color:var(--ok); }
+    .s-negative { color:var(--err); } .s-positive { color:var(--ok); } .s-neutral { color:var(--muted); }
+    .reply { color:var(--muted); font-size:13px; margin-top:4px; }
+    .empty { color:var(--muted); padding:24px 0; }
+    code { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">qwen<span>desk</span></div>
+    <div class="muted">Qwen (DashScope) triage · backend: {{ backend }}</div>
+  </header>
+  <main>
+    <form id="f">
+      <textarea id="msg" placeholder="Paste a customer message… e.g. 'I was charged twice this month and I'm really frustrated.'" required></textarea>
+      <button id="b" type="submit">Triage</button>
+    </form>
+    <p class="muted" id="status"></p>
+
+    {% if tickets %}
+    <table>
+      <thead>
+        <tr><th>When</th><th>Category</th><th>Priority</th><th>Sentiment</th><th>Summary &amp; draft reply</th></tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr>
+          <td class="muted">{{ t.created_at[:19].replace("T", " ") }}</td>
+          <td><span class="pill">{{ t.category }}</span></td>
+          <td class="p-{{ t.priority }}">{{ t.priority }}</td>
+          <td class="s-{{ t.sentiment }}">{{ t.sentiment }}</td>
+          <td>{{ t.summary }}<div class="reply">↳ {{ t.draft_reply }}</div></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No tickets yet. Paste a message above and hit <strong>Triage</strong>.</p>
+    {% endif %}
+  </main>
+
+  <script>
+    const f = document.getElementById("f"), b = document.getElementById("b"), s = document.getElementById("status");
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = document.getElementById("msg").value.trim();
+      if (!message) return;
+      b.disabled = true; s.textContent = "Asking Qwen…";
+      try {
+        const r = await fetch("/api/triage", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ message }) });
+        if (r.ok) { location.reload(); }
+        else { const j = await r.json().catch(() => ({})); s.textContent = "Error: " + (j.message || r.status); b.disabled = false; }
+      } catch (err) { s.textContent = "Error: " + err; b.disabled = false; }
+    });
+  </script>
+</body>
+</html>
