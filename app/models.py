@@ -30,3 +30,13 @@ class Ticket(TriageResult):
 
 class TriageRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+
+
+def summarize(tickets: list[Ticket]) -> dict[str, int]:
+    """Pure rollup for the dashboard header."""
+    return {
+        "total": len(tickets),
+        "urgent": sum(1 for t in tickets if t.priority == "urgent"),
+        "high": sum(1 for t in tickets if t.priority == "high"),
+        "negative": sum(1 for t in tickets if t.sentiment == "negative"),
+    }

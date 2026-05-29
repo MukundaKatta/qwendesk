@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import store
-from .models import Ticket, TriageRequest
+from .models import Ticket, TriageRequest, summarize
 from .qwen import triage
 
 app = FastAPI(title="qwendesk", version="0.1.0")
@@ -18,9 +18,11 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     backend = "Alibaba Cloud Tablestore" if store.enabled() else "in-memory (set Tablestore env to persist)"
+    tickets = store.list_tickets(50)
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "tickets": store.list_tickets(50), "backend": backend},
+        {"tickets": tickets, "summary": summarize(tickets), "backend": backend},
     )
 
 

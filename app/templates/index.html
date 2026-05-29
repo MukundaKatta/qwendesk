@@ -12,11 +12,17 @@
     .brand { font-weight:700; font-size:18px; } .brand span { color:var(--accent); }
     .muted { color:var(--muted); font-size:13px; }
     main { max-width:960px; margin:0 auto; padding:24px; }
-    form { display:flex; gap:10px; margin-bottom:8px; }
+    form { display:flex; gap:10px; }
     textarea { flex:1; min-height:64px; resize:vertical; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
     button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:0 18px; font-weight:600; cursor:pointer; }
     button:disabled { opacity:.6; cursor:default; }
-    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    .samples { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px; }
+    .chip { background:#222836; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer; }
+    .chip:hover { color:var(--text); border-color:var(--accent); }
+    .stats { display:flex; gap:10px; margin:18px 0 4px; flex-wrap:wrap; }
+    .stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:96px; }
+    .stat b { display:block; font-size:22px; line-height:1.2; } .stat small { color:var(--muted); }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
     th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
     th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; background:#222836; }
@@ -34,10 +40,26 @@
   </header>
   <main>
     <form id="f">
-      <textarea id="msg" placeholder="Paste a customer message… e.g. 'I was charged twice this month and I'm really frustrated.'" required></textarea>
+      <textarea id="msg" placeholder="Paste a customer message…"></textarea>
       <button id="b" type="submit">Triage</button>
     </form>
+    <div class="samples" id="samples">
+      <span class="muted">Try:</span>
+      <button type="button" class="chip">I was charged twice this month and I'm furious.</button>
+      <button type="button" class="chip">How do I reset my password? I'm locked out.</button>
+      <button type="button" class="chip">Love the new dashboard, thanks team!</button>
+      <button type="button" class="chip">The export button throws a 500 error every time.</button>
+    </div>
     <p class="muted" id="status"></p>
+
+    {% if summary and summary.total %}
+    <div class="stats">
+      <div class="stat"><b>{{ summary.total }}</b><small>tickets</small></div>
+      <div class="stat"><b class="p-urgent">{{ summary.urgent }}</b><small>urgent</small></div>
+      <div class="stat"><b class="p-high">{{ summary.high }}</b><small>high</small></div>
+      <div class="stat"><b class="s-negative">{{ summary.negative }}</b><small>negative</small></div>
+    </div>
+    {% endif %}
 
     {% if tickets %}
     <table>
@@ -57,23 +79,30 @@
       </tbody>
     </table>
     {% else %}
-    <p class="empty">No tickets yet. Paste a message above and hit <strong>Triage</strong>.</p>
+    <p class="empty">No tickets yet. Pick a sample above or paste a message, then hit <strong>Triage</strong>.</p>
     {% endif %}
   </main>
 
   <script>
-    const f = document.getElementById("f"), b = document.getElementById("b"), s = document.getElementById("status");
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const message = document.getElementById("msg").value.trim();
-      if (!message) return;
+    const f = document.getElementById("f"), b = document.getElementById("b"),
+          s = document.getElementById("status"), msg = document.getElementById("msg");
+
+    async function submitMessage(text) {
+      text = (text || "").trim();
+      if (!text) return;
       b.disabled = true; s.textContent = "Asking Qwen…";
       try {
-        const r = await fetch("/api/triage", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ message }) });
-        if (r.ok) { location.reload(); }
-        else { const j = await r.json().catch(() => ({})); s.textContent = "Error: " + (j.message || r.status); b.disabled = false; }
-      } catch (err) { s.textContent = "Error: " + err; b.disabled = false; }
-    });
+        const r = await fetch("/api/triage", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ message: text }) });
+        if (r.ok) { location.reload(); return; }
+        const j = await r.json().catch(() => ({}));
+        s.textContent = "Error: " + (j.message || r.status);
+      } catch (err) { s.textContent = "Error: " + err; }
+      b.disabled = false;
+    }
+
+    f.addEventListener("submit", (e) => { e.preventDefault(); submitMessage(msg.value); });
+    document.querySelectorAll("#samples .chip").forEach((c) =>
+      c.addEventListener("click", () => { msg.value = c.textContent; submitMessage(c.textContent); }));
   </script>
 </body>
 </html>

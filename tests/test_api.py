@@ -12,6 +12,12 @@ def test_health():
     assert r.json()["ok"] is True
 
 
+def test_index_renders():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "qwendesk" in r.text
+
+
 def test_triage_without_key_returns_503(monkeypatch):
     monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
     r = client.post("/api/triage", json={"message": "hello"})
